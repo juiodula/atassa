@@ -74,7 +74,7 @@ gmd(
                 );
             }
 
-            const { title, download_url } = result;
+            const { title, thumbnail,  download_url } = result;
 
             const audioBuffer = await gmdBuffer(download_url);
             const fileSize = audioBuffer.length;
@@ -174,6 +174,7 @@ gmd(
                 title: `${botName} SPOTIFY`,
                 text: `*Search Results:*\n\n${trackList}\n\n*Select a track:*`,
                 footer: botFooter,
+                image: { url: track.thumbnail },
                 buttons: buttons,
             });
 
@@ -539,7 +540,7 @@ gmd(
         }
 
         try {
-            await reply(`Searching for *${q}* APK...`);
+         //   await reply(`Searching for *${q}* APK...`);
 
             const apiUrl = `${GiftedTechApi}/api/download/apkdl?apikey=${GiftedApiKey}&appName=${encodeURIComponent(q)}`;
             const response = await axios.get(apiUrl, { timeout: 60000 });
@@ -685,6 +686,7 @@ gmd(
     },
 );
 
+/*
 gmd(
     {
         pattern: "ytv",
@@ -855,3 +857,4 @@ gmd(
         }
     },
 );
+*/
