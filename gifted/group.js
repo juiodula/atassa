@@ -1502,8 +1502,6 @@ gmd(
   async (from, Gifted, conText) => {
     const { reply, react, isSuperUser, isGroup, q, quoted, quotedMsg, mek, formatAudio, formatVideo } = conText;
     const { downloadMediaMessage } = require("gifted-baileys");
-    const fs = require("fs");
-    const path = require("path");
 
     if (!isGroup) return reply("❌ Group only command!");
     if (!isSuperUser) return reply("❌ Owner Only Command!");
@@ -1517,29 +1515,22 @@ gmd(
       );
     }
 
-    let tempFilePath = null;
-
     try {
-      let payload = { groupStatusMessage: {} };
+      let statusPayload = {};
 
       if (quotedMsg) {
-        const tempDir = "gift/temp";
-        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
         if (quoted?.imageMessage) {
           const caption = q || quoted.imageMessage.caption || "";
-          let buffer = await downloadMediaMessage(
+          const buffer = await downloadMediaMessage(
             { message: quotedMsg },
             "buffer",
             {},
           );
-          tempFilePath = path.join(tempDir, `status_${Date.now()}.jpg`);
-          fs.writeFileSync(tempFilePath, buffer);
-          payload.groupStatusMessage.image = { 
-            url: tempFilePath,
+          statusPayload = { 
+            image: buffer,
             mimetype: "image/jpeg"
           };
-          if (caption) payload.groupStatusMessage.caption = caption;
+          if (caption) statusPayload.caption = caption;
         } else if (quoted?.videoMessage) {
           const caption = q || quoted.videoMessage.caption || "";
           let buffer = await downloadMediaMessage(
@@ -1548,13 +1539,11 @@ gmd(
             {},
           );
           buffer = await formatVideo(buffer);
-          tempFilePath = path.join(tempDir, `status_${Date.now()}.mp4`);
-          fs.writeFileSync(tempFilePath, buffer);
-          payload.groupStatusMessage.video = { 
-            url: tempFilePath,
+          statusPayload = { 
+            video: buffer,
             mimetype: "video/mp4"
           };
-          if (caption) payload.groupStatusMessage.caption = caption;
+          if (caption) statusPayload.caption = caption;
         } else if (quoted?.audioMessage) {
           let buffer = await downloadMediaMessage(
             { message: quotedMsg },
@@ -1562,63 +1551,30 @@ gmd(
             {},
           );
           buffer = await formatAudio(buffer);
-          tempFilePath = path.join(tempDir, `status_${Date.now()}.mp3`);
-          fs.writeFileSync(tempFilePath, buffer);
-          payload.groupStatusMessage.audio = { 
-            url: tempFilePath,
+          statusPayload = { 
+            audio: buffer,
             mimetype: "audio/mp4",
             ptt: true
           };
-        } else if (quoted?.documentMessage) {
-          let buffer = await downloadMediaMessage(
-            { message: quotedMsg },
-            "buffer",
-            {},
-          );
-          const ext = quoted.documentMessage.fileName?.split(".").pop() || "bin";
-          tempFilePath = path.join(tempDir, `status_${Date.now()}.${ext}`);
-          fs.writeFileSync(tempFilePath, buffer);
-          payload.groupStatusMessage.document = { 
-            url: tempFilePath,
-            mimetype: quoted.documentMessage.mimetype || "application/octet-stream"
-          };
-        } else if (quoted?.stickerMessage) {
-          let buffer = await downloadMediaMessage(
-            { message: quotedMsg },
-            "buffer",
-            {},
-          );
-          tempFilePath = path.join(tempDir, `status_${Date.now()}.webp`);
-          fs.writeFileSync(tempFilePath, buffer);
-          payload.groupStatusMessage.sticker = { 
-            url: tempFilePath,
-            mimetype: "image/webp"
-          };
         } else if (quoted?.conversation || quoted?.extendedTextMessage?.text) {
-          payload.groupStatusMessage.text = quoted.conversation || quoted.extendedTextMessage.text;
+          statusPayload.text = quoted.conversation || quoted.extendedTextMessage.text;
         } else {
           return reply("❌ Unsupported media type for group status.");
         }
 
-        if (q && !payload.groupStatusMessage.caption && !payload.groupStatusMessage.text) {
-          payload.groupStatusMessage.caption = q;
+        if (q && !statusPayload.caption && !statusPayload.text) {
+          statusPayload.caption = q;
         }
       } else {
-        payload.groupStatusMessage.text = q;
+        statusPayload.text = q;
       }
 
-      await Gifted.sendMessage(from, payload, { quoted: mek });
+      await Gifted.giftedStatus.sendGroupStatus(from, statusPayload);
       await react("✅");
     } catch (error) {
       console.error("togroupstatus error:", error);
       await react("❌");
       return reply(`❌ Error sending group status: ${error.message}`);
-    } finally {
-      if (tempFilePath && fs.existsSync(tempFilePath)) {
-        try {
-          fs.unlinkSync(tempFilePath);
-        } catch (e) {}
-      }
     }
   },
 );
